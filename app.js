@@ -173,15 +173,15 @@ function calculateStablefordPoints(strokes, par, handicapStrokes) {
 
 // Backa Säteri Koordinater
 const COURSE_DATA = [
-    { "hole_id": 1, "par": 4, "tee_yellow": { "lat": 57.883866193891635, "lng": 12.05461231876264 }, "green": { "lat": 57.88230926351983, "lng": 12.059478072194594 } },
-    { "hole_id": 2, "par": 4, "tee_yellow": { "lat": 57.88137640639799, "lng": 12.060901843353562 }, "green": { "lat": 57.87832095155305, "lng": 12.060617754662907 } },
-    { "hole_id": 3, "par": 5, "tee_yellow": { "lat": 57.87960110341418, "lng": 12.05983799360738 }, "green": { "lat": 57.88155166860096, "lng": 12.055824185752096 } },    
-    { "hole_id": 4, "par": 3, "tee_yellow": { "lat": 57.88171599512097, "lng": 12.054848928203596 }, "green": { "lat": 57.882105319451746, "lng": 12.052420065833768 } },    
-    { "hole_id": 5, "par": 4, "tee_yellow": { "lat": 57.88242600582089, "lng": 12.051325197052492 }, "green": { "lat": 57.88471253307661, "lng": 12.049607059915017 } },
-    { "hole_id": 6, "par": 3, "tee_yellow": { "lat": 57.884116599999125, "lng": 12.050925354447433 }, "green": { "lat": 57.88313979461854, "lng": 12.05180675178049 } },
-    { "hole_id": 7, "par": 4, "tee_yellow": { "lat": 57.881945182301806, "lng": 12.055527497952824 }, "green": { "lat": 57.88183725284623, "lng": 12.060575821695267 } },
-    { "hole_id": 8, "par": 3, "tee_yellow": { "lat": 57.88220816823985, "lng": 12.061023284269906 }, "green": { "lat": 57.88301702421485, "lng": 12.060423015982884 } },
-    { "hole_id": 9, "par": 4, "tee_yellow": { "lat": 57.88337622821567, "lng": 12.060677523643317 }, "green": { "lat": 57.88430551375252, "lng": 12.055097334922095 } }
+    { "hole_id": 1, "par": 4, "tee_yellow": { "lat": 57.88386, "lng": 12.05461 }, "green": { "lat": 57.88229, "lng": 12.05949 } },
+    { "hole_id": 2, "par": 4, "tee_yellow": { "lat": 57.88138, "lng": 12.06089 }, "green": { "lat": 57.88219, "lng": 12.06214 } },
+    { "hole_id": 3, "par": 5, "tee_yellow": { "lat": 57.88244, "lng": 12.06222 }, "green": { "lat": 57.88426, "lng": 12.06456 } },
+    { "hole_id": 4, "par": 3, "tee_yellow": { "lat": 57.88452, "lng": 12.06487 }, "green": { "lat": 57.88414, "lng": 12.07223 } },
+    { "hole_id": 5, "par": 4, "tee_yellow": { "lat": 57.88416, "lng": 12.07248 }, "green": { "lat": 57.88585, "lng": 12.07172 } },
+    { "hole_id": 6, "par": 3, "tee_yellow": { "lat": 57.88605, "lng": 12.07173 }, "green": { "lat": 57.88372, "lng": 12.06990 } },
+    { "hole_id": 7, "par": 4, "tee_yellow": { "lat": 57.88358, "lng": 12.06967 }, "green": { "lat": 57.88246, "lng": 12.06830 } },
+    { "hole_id": 8, "par": 3, "tee_yellow": { "lat": 57.88173, "lng": 12.06041 }, "green": { "lat": 57.88372, "lng": 12.05739 } },
+    { "hole_id": 9, "par": 4, "tee_yellow": { "lat": 57.88359, "lng": 12.05777 }, "green": { "lat": 57.88383, "lng": 12.05445 } }
 ];
 
 let currentRoundId = localStorage.getItem('currentRoundId') ? parseInt(localStorage.getItem('currentRoundId')) : null;
