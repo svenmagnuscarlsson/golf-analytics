@@ -9,31 +9,129 @@
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
 </head>
 <body>
-    <header>
-        <button id="prev-hole">◄</button>
-        <h1 id="hole-info">Hål 1 (Par 4)</h1>
-        <button id="next-hole">►</button>
-    </header>
-    <main>
-        <div id="distance-display">
-            <span id="distance">--</span><span class="unit">m</span>
+    <div id="play-screen" class="tab-content active">
+        <header>
+            <button id="prev-hole">◄</button>
+            <h1 id="hole-info">Hål 1 (Par 4)</h1>
+            <button id="next-hole">►</button>
+        </header>
+        <main>
+            <div id="distance-display">
+                <span id="distance">--</span><span class="unit">m</span>
+            </div>
+            <div id="gps-status" class="status warning">Söker GPS...</div>
+            
+            <div class="grid-controls">
+                <button onclick="logStroke('Driver')" class="club-btn">Driver</button>
+                <button onclick="logStroke('Wood/Hybrid')" class="club-btn">Wood/Hybrid</button>
+                <button onclick="logStroke('Järn Lång')" class="club-btn">Järn Lång</button>
+                <button onclick="logStroke('Järn Kort')" class="club-btn">Järn Kort</button>
+                <button onclick="logStroke('Wedge')" class="club-btn">Wedge</button>
+                <button onclick="logStroke('Putter')" class="club-btn">Putter</button>
+            </div>
+            
+            <div class="actions">
+                <button id="start-btn" class="primary">Starta Runda (Wake Lock)</button>
+                <button id="end-btn" class="danger" style="display: none;">Avsluta Runda</button>
+            </div>
+        </main>
+    </div>
+
+    <div id="history-screen" class="tab-content">
+        <!-- Listvy för alla rundor -->
+        <div id="rounds-list-view" class="sub-screen">
+            <header>
+                <h1>Rundor</h1>
+            </header>
+            <main>
+                <div id="rounds-list" class="rounds-list">
+                    <!-- Fylls i dynamiskt -->
+                </div>
+            </main>
         </div>
-        <div id="gps-status" class="status warning">Söker GPS...</div>
         
-        <div class="grid-controls">
-            <button onclick="logStroke('Driver')">Driver</button>
-            <button onclick="logStroke('Wood/Hybrid')">Wood/Hybrid</button>
-            <button onclick="logStroke('Järn Lång')">Järn Lång</button>
-            <button onclick="logStroke('Järn Kort')">Järn Kort</button>
-            <button onclick="logStroke('Wedge')">Wedge</button>
-            <button onclick="logStroke('Putter')">Putter</button>
+        <!-- Detaljvy för en enskild runda -->
+        <div id="round-detail-view" class="sub-screen" style="display: none;">
+            <header>
+                <button id="back-to-list-btn">◄ Tillbaka</button>
+                <h1 id="detail-round-title">Runda</h1>
+            </header>
+            <main class="detail-main">
+                <div class="round-detail-header-card">
+                    <div class="stat-box">
+                        <span class="stat-label">Slag (Par)</span>
+                        <span id="detail-score" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Datum</span>
+                        <span id="detail-date" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Rundtid</span>
+                        <span id="detail-duration" class="stat-value">--</span>
+                    </div>
+                </div>
+
+                <h3 class="section-title">Scorekort</h3>
+                <div class="scorecard-container">
+                    <table class="scorecard-table">
+                        <thead>
+                            <tr id="scorecard-header">
+                                <th>Hål</th>
+                                <!-- Hål 1-9 och Tot skapas dynamiskt -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="scorecard-par">
+                                <td>Par</td>
+                                <!-- Par skapas dynamiskt -->
+                            </tr>
+                            <tr id="scorecard-strokes">
+                                <td>Slag</td>
+                                <!-- Slag skapas dynamiskt -->
+                            </tr>
+                            <tr id="scorecard-diff">
+                                <td>+/-</td>
+                                <!-- Diff skapas dynamiskt -->
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="section-title">Hålanalys</h3>
+                <div id="detail-hole-breakdown" class="hole-breakdown">
+                    <!-- Fylls i dynamiskt -->
+                </div>
+
+                <div class="detail-actions">
+                    <button id="detail-export-btn" class="secondary">Exportera JSON</button>
+                    <button id="detail-delete-btn" class="danger">Ta bort runda</button>
+                </div>
+            </main>
         </div>
-        
-        <div class="actions">
-            <button id="start-btn" class="primary">Starta Runda (Wake Lock)</button>
-            <button id="export-btn" class="secondary">Exportera Runddata</button>
-        </div>
-    </main>
+    </div>
+
+    <nav class="bottom-nav">
+        <button id="nav-play" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <line x1="12" y1="2" x2="12" y2="4"></line>
+                <line x1="12" y1="20" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="4" y2="12"></line>
+                <line x1="20" y1="12" x2="22" y2="12"></line>
+            </svg>
+            <span>Spela</span>
+        </button>
+        <button id="nav-history" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8v4l3 3"></path>
+                <path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path>
+            </svg>
+            <span>Historik</span>
+        </button>
+    </nav>
+
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {

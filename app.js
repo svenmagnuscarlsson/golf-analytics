@@ -1,6 +1,44 @@
-// Initiera databas
+// Initiera databas med schema-versioner och migrationer
 const db = new Dexie('GolfDB');
+
+// Version 1 (ursprunglig)
 db.version(1).stores({ strokes: '++id, hole_id, club, lat, lng, timestamp' });
+
+// Version 2: Lägg till rounds och gruppera slag via round_id
+db.version(2).stores({
+    rounds: '++id, startTime, endTime',
+    strokes: '++id, round_id, hole_id, club, lat, lng, timestamp'
+}).upgrade(async tx => {
+    const strokesTable = tx.table('strokes');
+    const roundsTable = tx.table('rounds');
+    
+    const strokes = await strokesTable.toArray();
+    if (strokes.length === 0) return;
+    
+    // Sortera slagen efter tidsstämpel
+    strokes.sort((a, b) => a.timestamp - b.timestamp);
+    
+    let currentRoundId = null;
+    let lastTimestamp = 0;
+    
+    for (const stroke of strokes) {
+        if (stroke.round_id) continue;
+        
+        const timeDiff = stroke.timestamp - lastTimestamp;
+        // Om det gått mer än 5 timmar sedan förra slaget, skapa ny runda
+        if (currentRoundId === null || timeDiff > 5 * 60 * 60 * 1000) {
+            currentRoundId = await roundsTable.add({
+                startTime: stroke.timestamp,
+                endTime: stroke.timestamp
+            });
+        }
+        
+        stroke.round_id = currentRoundId;
+        await strokesTable.put(stroke);
+        await roundsTable.update(currentRoundId, { endTime: stroke.timestamp });
+        lastTimestamp = stroke.timestamp;
+    }
+});
 
 // Backa Säteri Koordinater
 const COURSE_DATA = [
@@ -15,23 +53,66 @@ const COURSE_DATA = [
     { hole_id: 9, par: 4, green: { lat: 57.88383, lng: 12.05445 } }
 ];
 
-let currentHoleIndex = 0;
+let currentRoundId = localStorage.getItem('currentRoundId') ? parseInt(localStorage.getItem('currentRoundId')) : null;
+let currentHoleIndex = localStorage.getItem('currentHoleIndex') ? parseInt(localStorage.getItem('currentHoleIndex')) : 0;
 let watchId = null;
 let wakeLock = null;
 
-// UI-uppdatering
+// UI-uppdatering för spelskärmen
 function updateUI() {
     const hole = COURSE_DATA[currentHoleIndex];
     document.getElementById('hole-info').innerText = `Hål ${hole.hole_id} (Par ${hole.par})`;
+    
+    const startBtn = document.getElementById('start-btn');
+    const endBtn = document.getElementById('end-btn');
+    const clubBtns = document.querySelectorAll('.club-btn');
+    
+    if (currentRoundId) {
+        startBtn.style.display = 'none';
+        endBtn.style.display = 'block';
+        clubBtns.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('disabled');
+        });
+    } else {
+        startBtn.style.display = 'block';
+        endBtn.style.display = 'none';
+        clubBtns.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add('disabled');
+        });
+        document.getElementById('distance').innerText = '--';
+    }
 }
 
-// Navigering
+// Navigering mellan hål
 document.getElementById('next-hole').addEventListener('click', () => {
-    if (currentHoleIndex < COURSE_DATA.length - 1) { currentHoleIndex++; updateUI(); }
+    if (currentHoleIndex < COURSE_DATA.length - 1) {
+        currentHoleIndex++;
+        localStorage.setItem('currentHoleIndex', currentHoleIndex);
+        updateUI();
+        triggerImmediateGPSUpdate();
+    }
 });
+
 document.getElementById('prev-hole').addEventListener('click', () => {
-    if (currentHoleIndex > 0) { currentHoleIndex--; updateUI(); }
+    if (currentHoleIndex > 0) {
+        currentHoleIndex--;
+        localStorage.setItem('currentHoleIndex', currentHoleIndex);
+        updateUI();
+        triggerImmediateGPSUpdate();
+    }
 });
+
+function triggerImmediateGPSUpdate() {
+    if (watchId) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const target = COURSE_DATA[currentHoleIndex].green;
+            const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
+            document.getElementById('distance').innerText = Math.round(dist);
+        }, null, { enableHighAccuracy: true });
+    }
+}
 
 // Haversine distans (returnerar meter)
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -46,6 +127,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function startTracking() {
     if (watchId) return;
     const statusEl = document.getElementById('gps-status');
+    statusEl.innerText = "Söker GPS...";
+    statusEl.className = "status warning";
     
     watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -63,10 +146,33 @@ function startTracking() {
     );
 }
 
+function stopTracking() {
+    if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    const statusEl = document.getElementById('gps-status');
+    statusEl.innerText = "GPS Inaktiv";
+    statusEl.className = "status warning";
+}
+
 // Logga slag till IndexedDB
 async function logStroke(club) {
+    if (!currentRoundId) {
+        alert("Starta en runda först!");
+        return;
+    }
+    
+    // Spara källknappen för visuell feedback
+    const btn = event.currentTarget || event.target;
+    const originalText = btn.innerText;
+    
+    btn.innerText = "Lokaliserar...";
+    btn.disabled = true;
+
     navigator.geolocation.getCurrentPosition(async (pos) => {
         await db.strokes.add({
+            round_id: currentRoundId,
             hole_id: COURSE_DATA[currentHoleIndex].hole_id,
             club: club,
             lat: pos.coords.latitude,
@@ -74,38 +180,440 @@ async function logStroke(club) {
             timestamp: Date.now()
         });
         
+        // Uppdatera rundans sluttid vid varje nytt slag
+        await db.rounds.update(currentRoundId, { endTime: Date.now() });
+        
         // Visuell feedback
-        const btn = event.target;
-        const originalText = btn.innerText;
         btn.innerText = "Loggad ✓";
         btn.style.background = "var(--primary)";
         btn.style.color = "#000";
         setTimeout(() => {
             btn.innerText = originalText;
-            btn.style.background = "var(--surface)";
-            btn.style.color = "var(--text)";
+            btn.style.background = "";
+            btn.style.color = "";
+            btn.disabled = false;
         }, 1500);
-    }, null, { enableHighAccuracy: true });
+    }, (err) => {
+        alert(`Kunde inte logga slag på grund av GPS-fel: ${err.message}`);
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }, { enableHighAccuracy: true, timeout: 8000 });
 }
 
-// Wake Lock API
+// Starta runda
 document.getElementById('start-btn').addEventListener('click', async () => {
     try {
-        if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+        }
+    } catch (err) {
+        console.warn("Wake Lock misslyckades", err);
+    }
+    
+    try {
+        currentRoundId = await db.rounds.add({
+            startTime: Date.now(),
+            endTime: Date.now()
+        });
+        localStorage.setItem('currentRoundId', currentRoundId);
+        
+        currentHoleIndex = 0;
+        localStorage.setItem('currentHoleIndex', currentHoleIndex);
+        
         startTracking();
-        document.getElementById('start-btn').style.display = 'none';
-    } catch (err) { console.error("Wake Lock misslyckades", err); }
+        updateUI();
+    } catch (err) {
+        console.error("Kunde inte starta runda", err);
+        alert("Kunde inte starta runda i databasen.");
+    }
 });
 
-// Exportera
-document.getElementById('export-btn').addEventListener('click', async () => {
-    const data = await db.strokes.toArray();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+// Avsluta runda
+document.getElementById('end-btn').addEventListener('click', async () => {
+    if (!confirm("Är du säker på att du vill avsluta rundan?")) return;
+    
+    try {
+        if (wakeLock) {
+            await wakeLock.release();
+            wakeLock = null;
+        }
+    } catch (e) {
+        console.warn(e);
+    }
+    
+    if (currentRoundId) {
+        await db.rounds.update(currentRoundId, { endTime: Date.now() });
+    }
+    
+    stopTracking();
+    currentRoundId = null;
+    localStorage.removeItem('currentRoundId');
+    localStorage.removeItem('currentHoleIndex');
+    
+    updateUI();
+    
+    // Gå direkt till historikfliken och visa den nya rundan
+    switchTab('history');
+});
+
+// Flikhantering (Tab Switching)
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    if (tabName === 'play') {
+        document.getElementById('play-screen').classList.add('active');
+        document.getElementById('nav-play').classList.add('active');
+    } else if (tabName === 'history') {
+        document.getElementById('history-screen').classList.add('active');
+        document.getElementById('nav-history').classList.add('active');
+        showRoundsList();
+        loadHistory();
+    }
+}
+
+document.getElementById('nav-play').addEventListener('click', () => switchTab('play'));
+document.getElementById('nav-history').addEventListener('click', () => switchTab('history'));
+
+// Vy-hantering inom Historik-fliken
+function showRoundsList() {
+    document.getElementById('rounds-list-view').style.display = 'block';
+    document.getElementById('round-detail-view').style.display = 'none';
+}
+
+function showRoundDetail() {
+    document.getElementById('rounds-list-view').style.display = 'none';
+    document.getElementById('round-detail-view').style.display = 'block';
+}
+
+document.getElementById('back-to-list-btn').addEventListener('click', showRoundsList);
+
+// Ladda rundhistorik
+async function loadHistory() {
+    const roundsList = document.getElementById('rounds-list');
+    roundsList.innerHTML = '';
+    
+    const rounds = await db.rounds.reverse().toArray();
+    
+    if (rounds.length === 0) {
+        roundsList.innerHTML = `
+            <div class="empty-state">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12h8"></path>
+                    <path d="M12 8v8"></path>
+                </svg>
+                <p>Inga sparade rundor än.</p>
+                <button class="primary" onclick="switchTab('play')">Starta en runda</button>
+            </div>
+        `;
+        return;
+    }
+    
+    for (const round of rounds) {
+        const strokes = await db.strokes.where('round_id').equals(round.id).toArray();
+        const strokeCount = strokes.length;
+        
+        const strokesByHole = {};
+        strokes.forEach(s => {
+            if (!strokesByHole[s.hole_id]) strokesByHole[s.hole_id] = 0;
+            strokesByHole[s.hole_id]++;
+        });
+        
+        let totalPar = 0;
+        let playedHolesCount = 0;
+        Object.keys(strokesByHole).forEach(holeIdStr => {
+            const holeId = parseInt(holeIdStr);
+            const holeInfo = COURSE_DATA.find(h => h.hole_id === holeId);
+            if (holeInfo) {
+                totalPar += holeInfo.par;
+                playedHolesCount++;
+            }
+        });
+        
+        const diff = strokeCount - totalPar;
+        let diffText = "";
+        let diffClass = "";
+        
+        if (strokeCount === 0) {
+            diffText = "0 slag";
+            diffClass = "diff-neutral";
+        } else {
+            if (diff === 0) {
+                diffText = "E (Par)";
+                diffClass = "diff-par";
+            } else if (diff > 0) {
+                diffText = `+${diff}`;
+                diffClass = "diff-over";
+            } else {
+                diffText = `${diff}`;
+                diffClass = "diff-under";
+            }
+        }
+        
+        const dateStr = new Date(round.startTime).toLocaleDateString('sv-SE', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+        
+        const durationMs = round.endTime - round.startTime;
+        const durationText = formatDuration(durationMs);
+        
+        const card = document.createElement('div');
+        card.className = 'round-card';
+        card.innerHTML = `
+            <div class="round-card-info">
+                <div class="round-card-date">${dateStr}</div>
+                <div class="round-card-sub">${playedHolesCount} hål • ${durationText}</div>
+            </div>
+            <div class="round-card-score">
+                <div class="score-number">${strokeCount} slag</div>
+                <div class="score-diff ${diffClass}">${diffText}</div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => viewRoundDetails(round.id));
+        roundsList.appendChild(card);
+    }
+}
+
+function formatDuration(ms) {
+    if (ms < 60000) return "Mindre än 1 min";
+    const minutes = Math.floor(ms / 60000);
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0) {
+        return `${hrs}h ${mins}m`;
+    }
+    return `${mins}m`;
+}
+
+// Visa runda-detaljer
+async function viewRoundDetails(roundId) {
+    const round = await db.rounds.get(roundId);
+    if (!round) return;
+    
+    const strokes = await db.strokes.where('round_id').equals(roundId).toArray();
+    strokes.sort((a, b) => a.timestamp - b.timestamp);
+    
+    const dateStr = new Date(round.startTime).toLocaleDateString('sv-SE', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+    
+    document.getElementById('detail-round-title').innerText = `Runda ${new Date(round.startTime).toLocaleDateString('sv-SE', {day: 'numeric', month: 'short'})}`;
+    document.getElementById('detail-date').innerText = dateStr;
+    document.getElementById('detail-duration').innerText = formatDuration(round.endTime - round.startTime);
+    
+    const strokesByHole = {};
+    COURSE_DATA.forEach(h => strokesByHole[h.hole_id] = 0);
+    strokes.forEach(s => {
+        if (strokesByHole[s.hole_id] !== undefined) {
+            strokesByHole[s.hole_id]++;
+        }
+    });
+    
+    let totalStrokes = 0;
+    let totalPar = 0;
+    
+    const headerRow = document.getElementById('scorecard-header');
+    const parRow = document.getElementById('scorecard-par');
+    const strokesRow = document.getElementById('scorecard-strokes');
+    const diffRow = document.getElementById('scorecard-diff');
+    
+    headerRow.innerHTML = '<th>Hål</th>';
+    parRow.innerHTML = '<td>Par</td>';
+    strokesRow.innerHTML = '<td>Slag</td>';
+    diffRow.innerHTML = '<td>+/-</td>';
+    
+    COURSE_DATA.forEach(hole => {
+        const score = strokesByHole[hole.hole_id];
+        totalPar += hole.par;
+        totalStrokes += score;
+        
+        const th = document.createElement('th');
+        th.innerText = hole.hole_id;
+        headerRow.appendChild(th);
+        
+        const tdPar = document.createElement('td');
+        tdPar.innerText = hole.par;
+        parRow.appendChild(tdPar);
+        
+        const tdStrokes = document.createElement('td');
+        tdStrokes.innerText = score > 0 ? score : '-';
+        strokesRow.appendChild(tdStrokes);
+        
+        const tdDiff = document.createElement('td');
+        if (score > 0) {
+            const d = score - hole.par;
+            if (d === 0) {
+                tdDiff.innerText = 'E';
+                tdDiff.className = 'cell-par';
+            } else if (d > 0) {
+                tdDiff.innerText = `+${d}`;
+                tdDiff.className = d === 1 ? 'cell-bogey' : 'cell-double-bogey';
+            } else {
+                tdDiff.innerText = `${d}`;
+                tdDiff.className = d === -1 ? 'cell-birdie' : 'cell-eagle';
+            }
+        } else {
+            tdDiff.innerText = '-';
+        }
+        diffRow.appendChild(tdDiff);
+    });
+    
+    // Totals
+    const thTot = document.createElement('th');
+    thTot.innerText = 'Tot';
+    headerRow.appendChild(thTot);
+    
+    const tdParTot = document.createElement('td');
+    tdParTot.innerText = totalPar;
+    tdParTot.className = 'tot-cell';
+    parRow.appendChild(tdParTot);
+    
+    const tdStrokesTot = document.createElement('td');
+    tdStrokesTot.innerText = totalStrokes;
+    tdStrokesTot.className = 'tot-cell';
+    strokesRow.appendChild(tdStrokesTot);
+    
+    const tdDiffTot = document.createElement('td');
+    const totalDiff = totalStrokes - totalPar;
+    if (totalDiff === 0) {
+        tdDiffTot.innerText = 'E';
+        tdDiffTot.className = 'tot-cell cell-par';
+    } else if (totalDiff > 0) {
+        tdDiffTot.innerText = `+${totalDiff}`;
+        tdDiffTot.className = 'tot-cell cell-bogey';
+    } else {
+        tdDiffTot.innerText = `${totalDiff}`;
+        tdDiffTot.className = 'tot-cell cell-birdie';
+    }
+    diffRow.appendChild(tdDiffTot);
+    
+    document.getElementById('detail-score').innerText = `${totalStrokes} (${totalDiff >= 0 ? '+' : ''}${totalDiff})`;
+    
+    // Hålanalys
+    const breakdownEl = document.getElementById('detail-hole-breakdown');
+    breakdownEl.innerHTML = '';
+    
+    const strokesGroupedByHole = {};
+    strokes.forEach(s => {
+        if (!strokesGroupedByHole[s.hole_id]) strokesGroupedByHole[s.hole_id] = [];
+        strokesGroupedByHole[s.hole_id].push(s);
+    });
+    
+    COURSE_DATA.forEach(hole => {
+        const holeStrokes = strokesGroupedByHole[hole.hole_id] || [];
+        if (holeStrokes.length === 0) return;
+        
+        const holeCard = document.createElement('div');
+        holeCard.className = 'hole-detail-card';
+        
+        const score = holeStrokes.length;
+        const diff = score - hole.par;
+        let scoreBadgeClass = "";
+        let scoreBadgeText = "";
+        
+        if (diff === 0) { scoreBadgeClass = 'badge-par'; scoreBadgeText = 'Par'; }
+        else if (diff === -1) { scoreBadgeClass = 'badge-birdie'; scoreBadgeText = 'Birdie'; }
+        else if (diff < -1) { scoreBadgeClass = 'badge-eagle'; scoreBadgeText = 'Eagle'; }
+        else if (diff === 1) { scoreBadgeClass = 'badge-bogey'; scoreBadgeText = 'Bogey'; }
+        else { scoreBadgeClass = 'badge-double-bogey'; scoreBadgeText = `+${diff}`; }
+        
+        holeCard.innerHTML = `
+            <div class="hole-detail-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <span class="hole-detail-title">Hål ${hole.hole_id} (Par ${hole.par})</span>
+                <div class="hole-detail-header-right">
+                    <span class="score-badge ${scoreBadgeClass}">${score} (${scoreBadgeText})</span>
+                    <span class="expand-arrow">▼</span>
+                </div>
+            </div>
+            <div class="hole-strokes-list">
+                <!-- Slag fylls på nedan -->
+            </div>
+        `;
+        
+        const strokesListEl = holeCard.querySelector('.hole-strokes-list');
+        
+        for (let i = 0; i < holeStrokes.length; i++) {
+            const stroke = holeStrokes[i];
+            let distText = "";
+            
+            if (i < holeStrokes.length - 1) {
+                const nextStroke = holeStrokes[i + 1];
+                const dist = calculateDistance(stroke.lat, stroke.lng, nextStroke.lat, nextStroke.lng);
+                distText = `→ ${Math.round(dist)}m`;
+            } else {
+                const distToGreen = calculateDistance(stroke.lat, stroke.lng, hole.green.lat, hole.green.lng);
+                if (stroke.club === 'Putter') {
+                    distText = `→ I hål (${Math.round(distToGreen)}m putt)`;
+                } else {
+                    distText = `→ Green (${Math.round(distToGreen)}m till center)`;
+                }
+            }
+            
+            const strokeItem = document.createElement('div');
+            strokeItem.className = 'stroke-item';
+            strokeItem.innerHTML = `
+                <span class="stroke-index">Slag ${i + 1}</span>
+                <span class="stroke-club">${stroke.club}</span>
+                <span class="stroke-dist">${distText}</span>
+            `;
+            strokesListEl.appendChild(strokeItem);
+        }
+        
+        breakdownEl.appendChild(holeCard);
+    });
+    
+    // Klona knappar för att ta bort tidigare listeners
+    const exportBtn = document.getElementById('detail-export-btn');
+    const deleteBtn = document.getElementById('detail-delete-btn');
+    
+    const newExportBtn = exportBtn.cloneNode(true);
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    
+    exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    
+    newExportBtn.addEventListener('click', () => exportSingleRound(roundId));
+    newDeleteBtn.addEventListener('click', () => deleteRound(roundId));
+    
+    showRoundDetail();
+}
+
+async function exportSingleRound(roundId) {
+    const round = await db.rounds.get(roundId);
+    if (!round) return;
+    const strokes = await db.strokes.where('round_id').equals(roundId).toArray();
+    
+    const exportData = {
+        round: round,
+        strokes: strokes
+    };
+    
+    const dateFormatted = new Date(round.startTime).toISOString().split('T')[0];
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `backasateri_runda_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `backasateri_runda_${dateFormatted}.json`;
     a.click();
-});
+}
 
-// Initiera
+async function deleteRound(roundId) {
+    if (!confirm("Är du säker på att du vill ta bort den här rundan permanent?")) return;
+    
+    await db.strokes.where('round_id').equals(roundId).delete();
+    await db.rounds.delete(roundId);
+    
+    showRoundsList();
+    loadHistory();
+}
+
+// Initiera appen
+if (currentRoundId) {
+    startTracking();
+}
 updateUI();
