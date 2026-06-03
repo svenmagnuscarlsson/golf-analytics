@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backa Säteri Golf PWA</title>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        #distance { font-size: 3rem; font-weight: bold; margin: 20px 0; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 15px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div id="hole-info">Hål: 1</div>
+    <div id="distance">-- m</div>
+    <div class="controls">
+        <button onclick="logStroke('Driver')">Driver</button>
+        <button onclick="logStroke('Järn 7')">Järn 7</button>
+        <button onclick="logStroke('Putter')">Putter</button>
+        <button onclick="exportData()">Exportera JSON</button>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
