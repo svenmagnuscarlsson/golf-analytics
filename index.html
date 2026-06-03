@@ -2,25 +2,43 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Backa Säteri Golf PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        #distance { font-size: 3rem; font-weight: bold; margin: 20px 0; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { padding: 15px; font-size: 1rem; }
-    </style>
 </head>
 <body>
-    <div id="hole-info">Hål: 1</div>
-    <div id="distance">-- m</div>
-    <div class="controls">
-        <button onclick="logStroke('Driver')">Driver</button>
-        <button onclick="logStroke('Järn 7')">Järn 7</button>
-        <button onclick="logStroke('Putter')">Putter</button>
-        <button onclick="exportData()">Exportera JSON</button>
-    </div>
+    <header>
+        <button id="prev-hole">◄</button>
+        <h1 id="hole-info">Hål 1 (Par 4)</h1>
+        <button id="next-hole">►</button>
+    </header>
+    <main>
+        <div id="distance-display">
+            <span id="distance">--</span><span class="unit">m</span>
+        </div>
+        <div id="gps-status" class="status warning">Söker GPS...</div>
+        
+        <div class="grid-controls">
+            <button onclick="logStroke('Driver')">Driver</button>
+            <button onclick="logStroke('Wood/Hybrid')">Wood/Hybrid</button>
+            <button onclick="logStroke('Järn Lång')">Järn Lång</button>
+            <button onclick="logStroke('Järn Kort')">Järn Kort</button>
+            <button onclick="logStroke('Wedge')">Wedge</button>
+            <button onclick="logStroke('Putter')">Putter</button>
+        </div>
+        
+        <div class="actions">
+            <button id="start-btn" class="primary">Starta Runda (Wake Lock)</button>
+            <button id="export-btn" class="secondary">Exportera Runddata</button>
+        </div>
+    </main>
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
 </body>
 </html>
