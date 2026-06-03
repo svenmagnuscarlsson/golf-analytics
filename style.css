@@ -644,3 +644,31 @@ button.club-btn.disabled {
         transform: scale(1);
     }
 }
+
+/* Club Selection Modal Styling */
+.club-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.club-grid button {
+    padding: 20px 10px;
+    font-size: 1.1rem;
+    border-radius: 16px;
+    background: var(--surface-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.club-grid button:active {
+    background: var(--primary);
+    color: #000;
+    transform: scale(0.95);
+    border-color: transparent;
+}
+

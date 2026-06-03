@@ -156,19 +156,94 @@ function stopTracking() {
     statusEl.className = "status warning";
 }
 
-// Logga slag till IndexedDB
-async function logStroke(club) {
+// Sub-klubbor för respektive kategori
+const CLUB_SUB_CATEGORIES = {
+    'Wood/Hybrid': ['3-Wood', '5-Wood', 'Hybrid'],
+    'Järn Lång': ['J3', 'J4', 'J5', 'J6'],
+    'Järn Kort': ['J7', 'J8', 'J9'],
+    'Wedge': ['PW', 'GW', 'SW', 'LW']
+};
+
+// Hantera klick på klubbkategori
+function handleClubClick(category) {
     if (!currentRoundId) {
         alert("Starta en runda först!");
         return;
     }
     
-    // Spara källknappen för visuell feedback
-    const btn = event.currentTarget || event.target;
-    const originalText = btn.innerText;
+    const sourceBtn = window.event ? (window.event.currentTarget || window.event.target) : null;
     
-    btn.innerText = "Lokaliserar...";
-    btn.disabled = true;
+    if (CLUB_SUB_CATEGORIES[category]) {
+        showClubSelectModal(category, sourceBtn);
+    } else {
+        logStroke(category, sourceBtn);
+    }
+}
+
+// Visa modal för val av specifik klubba
+function showClubSelectModal(category, sourceBtn) {
+    const modal = document.getElementById('club-select-modal');
+    const titleEl = document.getElementById('club-modal-title');
+    const gridEl = document.getElementById('club-select-grid');
+    const cancelBtn = document.getElementById('club-modal-cancel-btn');
+    
+    titleEl.innerText = `Välj ${category}`;
+    gridEl.innerHTML = '';
+    
+    const subClubs = CLUB_SUB_CATEGORIES[category];
+    subClubs.forEach(club => {
+        const btn = document.createElement('button');
+        btn.innerText = club;
+        btn.addEventListener('click', () => {
+            closeClubSelectModal();
+            logStroke(club, sourceBtn);
+        });
+        gridEl.appendChild(btn);
+    });
+    
+    modal.style.display = 'flex';
+    
+    const handleOutsideClick = (e) => {
+        if (e.target === modal) {
+            closeClubSelectModal();
+        }
+    };
+    modal.addEventListener('click', handleOutsideClick);
+    
+    const handleCancel = () => {
+        closeClubSelectModal();
+    };
+    cancelBtn.addEventListener('click', handleCancel);
+    
+    modal._cleanup = () => {
+        modal.removeEventListener('click', handleOutsideClick);
+        cancelBtn.removeEventListener('click', handleCancel);
+    };
+}
+
+function closeClubSelectModal() {
+    const modal = document.getElementById('club-select-modal');
+    modal.style.display = 'none';
+    if (modal._cleanup) {
+        modal._cleanup();
+        modal._cleanup = null;
+    }
+}
+
+// Logga slag till IndexedDB
+async function logStroke(club, sourceBtn = null) {
+    if (!currentRoundId) {
+        alert("Starta en runda först!");
+        return;
+    }
+    
+    const btn = sourceBtn || (window.event && (window.event.currentTarget || window.event.target));
+    const originalText = btn ? btn.innerText : club;
+    
+    if (btn) {
+        btn.innerText = "Lokaliserar...";
+        btn.disabled = true;
+    }
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         await db.strokes.add({
@@ -184,19 +259,25 @@ async function logStroke(club) {
         await db.rounds.update(currentRoundId, { endTime: Date.now() });
         
         // Visuell feedback
-        btn.innerText = "Loggad ✓";
-        btn.style.background = "var(--primary)";
-        btn.style.color = "#000";
-        setTimeout(() => {
+        if (btn) {
+            btn.innerText = `${club} Loggad ✓`;
+            btn.style.background = "var(--primary)";
+            btn.style.color = "#000";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = "";
+                btn.style.color = "";
+                btn.disabled = false;
+            }, 1500);
+        }
+    }, (err) => {
+        alert(`Kunde inte logga slag på grund av GPS-fel: ${err.message}`);
+        if (btn) {
             btn.innerText = originalText;
             btn.style.background = "";
             btn.style.color = "";
             btn.disabled = false;
-        }, 1500);
-    }, (err) => {
-        alert(`Kunde inte logga slag på grund av GPS-fel: ${err.message}`);
-        btn.innerText = originalText;
-        btn.disabled = false;
+        }
     }, { enableHighAccuracy: true, timeout: 8000 });
 }
 

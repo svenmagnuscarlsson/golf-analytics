@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="sv">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
 </head>
+
 <body>
     <div id="play-screen" class="tab-content active">
         <header>
@@ -20,19 +22,19 @@
                 <span id="distance">--</span><span class="unit">m</span>
             </div>
             <div id="gps-status" class="status warning">Söker GPS...</div>
-            
+
             <div class="grid-controls">
-                <button onclick="logStroke('Driver')" class="club-btn">Driver</button>
-                <button onclick="logStroke('Wood/Hybrid')" class="club-btn">Wood/Hybrid</button>
-                <button onclick="logStroke('Järn Lång')" class="club-btn">Järn Lång</button>
-                <button onclick="logStroke('Järn Kort')" class="club-btn">Järn Kort</button>
-                <button onclick="logStroke('Wedge')" class="club-btn">Wedge</button>
-                <button onclick="logStroke('Putter')" class="club-btn">Putter</button>
+                <button onclick="handleClubClick('Driver')" class="club-btn">Driver</button>
+                <button onclick="handleClubClick('Wood/Hybrid')" class="club-btn">Wood/Hybrid</button>
+                <button onclick="handleClubClick('Järn Lång')" class="club-btn">Järn lång</button>
+                <button onclick="handleClubClick('Järn Kort')" class="club-btn">Järn kort</button>
+                <button onclick="handleClubClick('Wedge')" class="club-btn">Wedge</button>
+                <button onclick="handleClubClick('Putter')" class="club-btn">Putter</button>
             </div>
-            
+
             <div class="actions">
-                <button id="start-btn" class="primary">Starta Runda (Wake Lock)</button>
-                <button id="end-btn" class="danger" style="display: none;">Avsluta Runda</button>
+                <button id="start-btn" class="primary">Starta runda</button>
+                <button id="end-btn" class="danger" style="display: none;">Avsluta runda</button>
             </div>
         </main>
     </div>
@@ -49,7 +51,7 @@
                 </div>
             </main>
         </div>
-        
+
         <!-- Detaljvy för en enskild runda -->
         <div id="round-detail-view" class="sub-screen" style="display: none;">
             <header>
@@ -113,7 +115,8 @@
 
     <nav class="bottom-nav">
         <button id="nav-play" class="nav-item active">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <circle cx="12" cy="12" r="2"></circle>
                 <line x1="12" y1="2" x2="12" y2="4"></line>
@@ -124,7 +127,8 @@
             <span>Spela</span>
         </button>
         <button id="nav-history" class="nav-item">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 8v4l3 3"></path>
                 <path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path>
             </svg>
@@ -144,6 +148,18 @@
         </div>
     </div>
 
+    <!-- Anpassad klubbvalsknapp-modal -->
+    <div id="club-select-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3 id="club-modal-title">Välj klubba</h3>
+            <div id="club-select-grid" class="club-grid">
+                <!-- Fylls i dynamiskt -->
+            </div>
+            <button id="club-modal-cancel-btn" class="modal-btn secondary"
+                style="margin-top: 16px; width: 100%;">Avbryt</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -151,4 +167,5 @@
         }
     </script>
 </body>
+
 </html>
