@@ -230,7 +230,14 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
 // Avsluta runda
 document.getElementById('end-btn').addEventListener('click', async () => {
-    if (!confirm("Är du säker på att du vill avsluta rundan?")) return;
+    const confirmed = await showConfirm({
+        title: "Avsluta runda?",
+        message: "Är du säker på att du vill avsluta den här rundan?",
+        confirmText: "Ja, avsluta",
+        cancelText: "Avbryt",
+        isDanger: false
+    });
+    if (!confirmed) return;
     
     try {
         if (wakeLock) {
@@ -602,8 +609,58 @@ async function exportSingleRound(roundId) {
     a.click();
 }
 
+// Anpassad bekräftelsedialog
+function showConfirm({ title, message, confirmText = "OK", cancelText = "Avbryt", isDanger = true }) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('modal-title');
+        const messageEl = document.getElementById('modal-message');
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        
+        titleEl.innerText = title;
+        messageEl.innerText = message;
+        confirmBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        
+        if (isDanger) {
+            confirmBtn.className = 'modal-btn danger';
+        } else {
+            confirmBtn.className = 'modal-btn primary';
+        }
+        
+        modal.style.display = 'flex';
+        
+        function handleConfirm() {
+            cleanup();
+            resolve(true);
+        }
+        
+        function handleCancel() {
+            cleanup();
+            resolve(false);
+        }
+        
+        function cleanup() {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            modal.style.display = 'none';
+        }
+        
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+}
+
 async function deleteRound(roundId) {
-    if (!confirm("Är du säker på att du vill ta bort den här rundan permanent?")) return;
+    const confirmed = await showConfirm({
+        title: "Ta bort runda?",
+        message: "Är du säker på att du vill ta bort den här rundan permanent? Detta går inte att ångra.",
+        confirmText: "Ta bort",
+        cancelText: "Avbryt",
+        isDanger: true
+    });
+    if (!confirmed) return;
     
     await db.strokes.where('round_id').equals(roundId).delete();
     await db.rounds.delete(roundId);
