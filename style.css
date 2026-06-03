@@ -672,3 +672,231 @@ button.club-btn.disabled {
     border-color: transparent;
 }
 
+/* Settings tab screen styling */
+.settings-card {
+    background: var(--surface);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.4);
+    margin-bottom: 20px;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.01em;
+}
+
+.card-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    line-height: 1.45;
+    margin: 0 0 20px 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+}
+
+/* Handicap input with increment/decrement buttons */
+.hcp-input-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#hcp-input {
+    flex: 1;
+    background: var(--surface-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 14px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#hcp-input:focus {
+    border-color: var(--primary);
+}
+
+.hcp-adjust-btn {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border-radius: 14px;
+    background: var(--surface-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.hcp-adjust-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Tee Selector pills styling */
+.tee-selector {
+    display: flex;
+    gap: 8px;
+}
+
+.tee-opt-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 14px;
+    background: var(--surface-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tee-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-vit {
+    background: #ffffff;
+    border: 1.5px solid #94a3b8;
+}
+
+.dot-gul {
+    background: #facc15;
+}
+
+.dot-rod {
+    background: #f87171;
+}
+
+/* Active Tee States with high contrast styling */
+.tee-opt-btn.active.tee-vit {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+.tee-opt-btn.active.tee-vit .tee-dot {
+    border-color: #000000;
+}
+
+.tee-opt-btn.active.tee-gul {
+    background: #facc15;
+    color: #000000;
+    border-color: #facc15;
+    box-shadow: 0 4px 12px rgba(250, 204, 21, 0.2);
+}
+.tee-opt-btn.active.tee-gul .tee-dot {
+    background: #000000;
+}
+
+.tee-opt-btn.active.tee-rod {
+    background: #f87171;
+    color: #ffffff;
+    border-color: #f87171;
+    box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25);
+}
+.tee-opt-btn.active.tee-rod .tee-dot {
+    background: #ffffff;
+}
+
+.settings-actions {
+    margin-top: 24px;
+}
+
+.settings-actions button {
+    width: 100%;
+}
+
+.saved-feedback {
+    text-align: center;
+    padding: 12px;
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--primary);
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-top: 16px;
+    animation: slideUpFade 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Info card styling */
+.info-card {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(26, 26, 36, 0.3) 100%);
+    border-color: rgba(74, 222, 128, 0.1);
+}
+
+.info-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    color: var(--primary);
+}
+
+.info-card p {
+    font-size: 0.825rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin: 0 0 10px 0;
+}
+
+.info-card p:last-child {
+    margin-bottom: 0;
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsiveness adjustments */
+@media (max-width: 360px) {
+    .round-detail-header-card {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    .round-detail-header-card .stat-box {
+        align-items: center;
+    }
+}
+
+
