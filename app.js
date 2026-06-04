@@ -189,14 +189,52 @@ let currentHoleIndex = localStorage.getItem('currentHoleIndex') ? parseInt(local
 let watchId = null;
 let wakeLock = null;
 
+// Screen Wake Lock-hantering
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) {
+        console.warn("Screen Wake Lock API stöds inte i denna webbläsare.");
+        return;
+    }
+    if (wakeLock) return;
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log("Skärmen hålls vaken (Wake Lock aktivt).");
+        wakeLock.addEventListener('release', () => {
+            console.log("Wake Lock släpptes.");
+            wakeLock = null;
+        });
+    } catch (err) {
+        console.warn("Kunde inte aktivera Wake Lock:", err);
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock) {
+        try {
+            await wakeLock.release();
+            wakeLock = null;
+            console.log("Wake Lock släppt manuellt.");
+        } catch (err) {
+            console.warn("Kunde inte släppa Wake Lock:", err);
+        }
+    }
+}
+
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && currentRoundId) {
+        await requestWakeLock();
+    }
+});
+
 // UI-uppdatering för spelskärmen
-function updateUI() {
+async function updateUI() {
     const hole = COURSE_DATA[currentHoleIndex];
     document.getElementById('hole-info').innerText = `Hål ${hole.hole_id} (Par ${hole.par})`;
 
     const startBtn = document.getElementById('start-btn');
     const endBtn = document.getElementById('end-btn');
     const clubBtns = document.querySelectorAll('.club-btn');
+    const strokeCountEl = document.getElementById('hole-stroke-count');
 
     if (currentRoundId) {
         startBtn.style.display = 'none';
@@ -205,6 +243,27 @@ function updateUI() {
             btn.disabled = false;
             btn.classList.remove('disabled');
         });
+
+        // Hämta antal slag för aktuellt hål i denna runda
+        try {
+            const count = await db.strokes
+                .where('round_id').equals(currentRoundId)
+                .and(s => s.hole_id === hole.hole_id)
+                .count();
+
+            if (strokeCountEl) {
+                if (count === 0) {
+                    strokeCountEl.innerText = 'Inga slag registrerade';
+                } else if (count === 1) {
+                    strokeCountEl.innerText = '1 slag registrerat';
+                } else {
+                    strokeCountEl.innerText = `${count} slag registrerade`;
+                }
+                strokeCountEl.style.display = 'block';
+            }
+        } catch (e) {
+            console.error("Kunde inte hämta slagantal", e);
+        }
     } else {
         startBtn.style.display = 'block';
         endBtn.style.display = 'none';
@@ -213,6 +272,9 @@ function updateUI() {
             btn.classList.add('disabled');
         });
         document.getElementById('distance').innerText = '--';
+        if (strokeCountEl) {
+            strokeCountEl.style.display = 'none';
+        }
     }
 }
 
@@ -389,6 +451,9 @@ async function logStroke(club, sourceBtn = null) {
         // Uppdatera rundans sluttid vid varje nytt slag
         await db.rounds.update(currentRoundId, { endTime: Date.now() });
 
+        // Uppdatera slagräknaren i UI:t
+        await updateUI();
+
         // Visuell feedback
         if (btn) {
             btn.innerText = `${club} Loggad ✓`;
@@ -414,13 +479,7 @@ async function logStroke(club, sourceBtn = null) {
 
 // Starta runda
 document.getElementById('start-btn').addEventListener('click', async () => {
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-        }
-    } catch (err) {
-        console.warn("Wake Lock misslyckades", err);
-    }
+    await requestWakeLock();
 
     try {
         currentRoundId = await db.rounds.add({
@@ -451,14 +510,7 @@ document.getElementById('end-btn').addEventListener('click', async () => {
     });
     if (!confirmed) return;
 
-    try {
-        if (wakeLock) {
-            await wakeLock.release();
-            wakeLock = null;
-        }
-    } catch (e) {
-        console.warn(e);
-    }
+    await releaseWakeLock();
 
     if (currentRoundId) {
         await db.rounds.update(currentRoundId, { endTime: Date.now() });
@@ -1019,6 +1071,7 @@ async function initApp() {
     bindSettingsEvents();
     if (currentRoundId) {
         startTracking();
+        await requestWakeLock();
     }
     updateUI();
 }
