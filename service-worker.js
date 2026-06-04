@@ -1,10 +1,10 @@
-const CACHE_NAME = 'bs-golf-v4';
+const CACHE_NAME = 'bs-golf-v5';
 const ASSETS = [
-  './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
+  './slopetable-backa-sateri.json',
   'https://unpkg.com/dexie/dist/dexie.js'
 ];
 

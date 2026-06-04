@@ -439,7 +439,7 @@ async function logStroke(club, sourceBtn = null) {
         return;
     }
 
-    const btn = sourceBtn || (window.event && (window.event.currentTarget || window.event.target));
+    const btn = sourceBtn || null;
     const originalText = btn ? btn.innerText : club;
 
     if (btn) {
@@ -484,6 +484,8 @@ async function logStroke(club, sourceBtn = null) {
             btn.disabled = false;
         }
     }, { enableHighAccuracy: true, timeout: 8000 });
+}
+
 async function resumeRound(roundId) {
     if (currentRoundId) {
         alert("Du har redan en pågående runda. Avsluta den först innan du kan återuppta en annan.");
