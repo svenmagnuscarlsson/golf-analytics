@@ -1,19 +1,19 @@
 :root {
-    --bg: #0f0f12;
-    --surface: #1a1a24;
-    --surface-light: #242436;
+    --bg: #000000;
+    --surface: #171717;
+    --surface-light: #262626;
     --primary: #4ade80;
     --text: #ffffff;
-    --text-dim: #94a3b8;
-    --danger: #f87171;
+    --text-dim: #e4e4e7;
+    --danger: #ef4444;
     --danger-dark: #dc2626;
     
     /* Score colors */
     --c-eagle: #38bdf8;
     --c-birdie: #34d399;
-    --c-par: #94a3b8;
+    --c-par: #e4e4e7;
     --c-bogey: #fb923c;
-    --c-double-bogey: #f87171;
+    --c-double-bogey: #ef4444;
 }
 
 body {
@@ -720,6 +720,7 @@ button.club-btn.disabled {
 
 #hcp-input {
     flex: 1;
+    min-width: 0;
     background: var(--surface-light);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text);
@@ -738,8 +739,8 @@ button.club-btn.disabled {
 }
 
 .hcp-adjust-btn {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     font-size: 1.5rem;
     font-weight: 600;
