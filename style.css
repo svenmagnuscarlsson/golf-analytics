@@ -893,6 +893,15 @@ button.club-btn.disabled {
     text-align: center;
 }
 
+.active-round-indicator {
+    font-size: 0.7rem;
+    color: var(--primary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+}
+
 .hole-stroke-count {
     font-size: 0.8rem;
     color: var(--text-dim);

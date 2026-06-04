@@ -15,6 +15,7 @@
         <header>
             <button id="prev-hole">◄</button>
             <div class="header-title-container">
+                <span id="active-round-indicator" class="active-round-indicator" style="display: none;"></span>
                 <h1 id="hole-info">Hål 1 (Par 4)</h1>
                 <span id="hole-stroke-count" class="hole-stroke-count"></span>
             </div>
@@ -117,6 +118,7 @@
                 </div>
 
                 <div class="detail-actions">
+                    <button id="detail-resume-btn" class="primary">Återuppta runda</button>
                     <button id="detail-export-btn" class="secondary">Exportera JSON</button>
                     <button id="detail-delete-btn" class="danger">Ta bort runda</button>
                 </div>

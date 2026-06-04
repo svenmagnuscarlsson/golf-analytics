@@ -235,6 +235,7 @@ async function updateUI() {
     const endBtn = document.getElementById('end-btn');
     const clubBtns = document.querySelectorAll('.club-btn');
     const strokeCountEl = document.getElementById('hole-stroke-count');
+    const activeRoundEl = document.getElementById('active-round-indicator');
 
     if (currentRoundId) {
         startBtn.style.display = 'none';
@@ -243,6 +244,11 @@ async function updateUI() {
             btn.disabled = false;
             btn.classList.remove('disabled');
         });
+
+        if (activeRoundEl) {
+            activeRoundEl.innerText = `Runda #${currentRoundId}`;
+            activeRoundEl.style.display = 'block';
+        }
 
         // Hämta antal slag för aktuellt hål i denna runda
         try {
@@ -274,6 +280,9 @@ async function updateUI() {
         document.getElementById('distance').innerText = '--';
         if (strokeCountEl) {
             strokeCountEl.style.display = 'none';
+        }
+        if (activeRoundEl) {
+            activeRoundEl.style.display = 'none';
         }
     }
 }
@@ -475,6 +484,48 @@ async function logStroke(club, sourceBtn = null) {
             btn.disabled = false;
         }
     }, { enableHighAccuracy: true, timeout: 8000 });
+async function resumeRound(roundId) {
+    if (currentRoundId) {
+        alert("Du har redan en pågående runda. Avsluta den först innan du kan återuppta en annan.");
+        return;
+    }
+
+    try {
+        const round = await db.rounds.get(roundId);
+        if (!round) {
+            alert("Kunde inte hitta rundan.");
+            return;
+        }
+
+        // Sätt aktiv runda
+        currentRoundId = roundId;
+        localStorage.setItem('currentRoundId', currentRoundId);
+
+        // Hitta senaste hålet från loggade slag
+        const strokes = await db.strokes.where('round_id').equals(roundId).toArray();
+        let targetHoleId = 1;
+        if (strokes.length > 0) {
+            // Sortera efter timestamp för att hitta det senaste slaget
+            strokes.sort((a, b) => b.timestamp - a.timestamp);
+            targetHoleId = strokes[0].hole_id;
+        }
+
+        // Hitta hålets index i COURSE_DATA
+        const holeIndex = COURSE_DATA.findIndex(h => h.hole_id === targetHoleId);
+        currentHoleIndex = holeIndex >= 0 ? holeIndex : 0;
+        localStorage.setItem('currentHoleIndex', currentHoleIndex);
+
+        // Aktivera GPS och Wake Lock
+        startTracking();
+        await requestWakeLock();
+
+        // Uppdatera UI och byt flik
+        await updateUI();
+        switchTab('play');
+    } catch (err) {
+        console.error("Kunde inte återuppta rundan", err);
+        alert("Kunde inte återuppta rundan.");
+    }
 }
 
 // Starta runda
@@ -720,11 +771,12 @@ async function loadHistory() {
             }
         }
 
-        const dateStr = new Date(round.startTime).toLocaleDateString('sv-SE', {
+        const dateFormatted = new Date(round.startTime).toLocaleDateString('sv-SE', {
             day: 'numeric',
             month: 'short',
             year: 'numeric'
         });
+        const dateStr = `Runda #${round.id} • ${dateFormatted}`;
 
         const durationMs = round.endTime - round.startTime;
         const durationText = formatDuration(durationMs);
@@ -774,7 +826,7 @@ async function viewRoundDetails(roundId) {
         year: 'numeric'
     });
 
-    document.getElementById('detail-round-title').innerText = `Runda ${new Date(round.startTime).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}`;
+    document.getElementById('detail-round-title').innerText = `Runda #${round.id} (${new Date(round.startTime).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })})`;
     document.getElementById('detail-date').innerText = dateStr;
     document.getElementById('detail-duration').innerText = formatDuration(round.endTime - round.startTime);
 
@@ -972,15 +1024,19 @@ async function viewRoundDetails(roundId) {
     });
 
     // Klona knappar för att ta bort tidigare listeners
+    const resumeBtn = document.getElementById('detail-resume-btn');
     const exportBtn = document.getElementById('detail-export-btn');
     const deleteBtn = document.getElementById('detail-delete-btn');
 
+    const newResumeBtn = resumeBtn.cloneNode(true);
     const newExportBtn = exportBtn.cloneNode(true);
     const newDeleteBtn = deleteBtn.cloneNode(true);
 
+    resumeBtn.parentNode.replaceChild(newResumeBtn, resumeBtn);
     exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
     deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
 
+    newResumeBtn.addEventListener('click', () => resumeRound(roundId));
     newExportBtn.addEventListener('click', () => exportSingleRound(roundId));
     newDeleteBtn.addEventListener('click', () => deleteRound(roundId));
 
